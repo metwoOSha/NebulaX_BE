@@ -4,7 +4,6 @@
     "tabWidth": 4,
     "trailingComma": "es5",
     "printWidth": 120,
-    "endOfLine": "lf",
     "plugins": ["prettier-plugin-sql"],
     "overrides": [
         {
