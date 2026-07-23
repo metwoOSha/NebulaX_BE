@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcrypt';
-import { pool } from '../db';
-import { createAccessToken } from '../helpers/token.helper';
+import { pool } from '../db/index.js';
+import { createAccessToken } from '../helpers/token.helper.js';
 
 export async function register(req: Request, res: Response, next: NextFunction) {
     try {
