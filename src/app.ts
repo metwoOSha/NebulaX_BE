@@ -11,6 +11,7 @@ import authRoutes from './routes/auth.routes.js';
 import tagsRoutes from './routes/tags.routes.js';
 import usersRoutes from './routes/users.routes.js';
 import roomsRoutes from './routes/rooms.routes.js';
+import messagesRoutes from './routes/messages.routes.js';
 
 const app = express();
 
@@ -30,6 +31,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/tags', tagsRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/rooms', roomsRoutes);
+app.use('/api/rooms/:id/messages', messagesRoutes);
 
 app.use((req, res) => {
     res.status(404).json({ message: 'Route not found' });
