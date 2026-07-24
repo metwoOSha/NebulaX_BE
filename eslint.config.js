@@ -4,6 +4,9 @@ import prettier from 'eslint-plugin-prettier';
 
 export default [
     {
+        ignores: ['src/config/swagger.generated.ts'],
+    },
+    {
         files: ['src/**/*.ts'],
         languageOptions: {
             parser: tsparser,

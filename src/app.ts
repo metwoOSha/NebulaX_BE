@@ -3,7 +3,9 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
+import swaggerUi from 'swagger-ui-express';
 import { corsOptions } from './config/app.config.js';
+import { swaggerSpec } from './config/swagger.config.js';
 import errorMiddleware from './middleware/error.middleware.js';
 import authRoutes from './routes/auth.routes.js';
 import tagsRoutes from './routes/tags.routes.js';
@@ -21,6 +23,8 @@ app.use(cookieParser());
 app.get('/health', (req, res) => {
     res.json({ status: 'ok' });
 });
+
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/tags', tagsRoutes);
