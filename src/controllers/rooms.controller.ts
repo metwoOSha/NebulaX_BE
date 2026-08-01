@@ -89,7 +89,7 @@ export async function joinRoom(req: Request, res: Response, next: NextFunction) 
         const userId = req.user.id;
 
         const room = await pool.query('SELECT id FROM rooms WHERE id = $1', [id]);
-        if (room.rows.length === 0) return res.status(409).json({ message: 'Already a member' });
+        if (room.rows.length === 0) return res.status(404).json({ message: 'Room not found' });
 
         const existing = await pool.query('SELECT role FROM room_members WHERE room_id = $1 AND user_id = $2', [
             id,

@@ -4,15 +4,21 @@ import app from './app.js';
 import { env } from './config/env.config.js';
 import { socketOptions } from './config/app.config.js';
 import { pool } from './db/index.js';
+import { connectRedis } from './redis/index.js';
+import { initSocket } from './socket/index.js';
 
 const httpServer = createServer(app);
 
 export const io = new Server(httpServer, socketOptions);
 
+initSocket(io);
+
 const start = async () => {
     try {
         await pool.query('SELECT 1');
         console.log('PostgreSQL connected');
+
+        await connectRedis();
 
         httpServer.listen(env.PORT, () => {
             console.log(`Server running on port ${env.PORT}`);

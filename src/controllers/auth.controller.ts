@@ -82,13 +82,20 @@ export async function me(req: Request, res: Response, next: NextFunction) {
         const { id } = req.user;
 
         const user = await pool.query(
-            'SELECT id, username, name, email, avatar_color_id, about FROM users WHERE id = $1',
+            `SELECT
+                u.id, u.username, u.name, u.email, u.avatar_color_id, u.about,
+                array_agg(t.name) FILTER (WHERE t.name IS NOT NULL) as tags
+            FROM users u
+            LEFT JOIN user_tags ut ON u.id = ut.user_id
+            LEFT JOIN tags t ON ut.tag_id = t.id
+            WHERE u.id = $1
+            GROUP BY u.id`,
             [id]
         );
 
         if (user.rows.length === 0) return res.status(404).json({ message: 'User not found' });
 
-        res.status(200).json({ user: user.rows[0] });
+        res.status(200).json({ user: { ...user.rows[0], tags: user.rows[0].tags ?? [] } });
     } catch (error) {
         next(error);
     }
