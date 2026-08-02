@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcrypt';
 import { pool } from '../db/index.js';
 import { createAccessToken } from '../helpers/token.helper.js';
+import { cookieOptions } from '../config/app.config.js';
 
 export async function register(req: Request, res: Response, next: NextFunction) {
     try {
@@ -22,12 +23,7 @@ export async function register(req: Request, res: Response, next: NextFunction) 
 
         const token = createAccessToken(user.rows[0]);
 
-        res.cookie('token', token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            maxAge: 7 * 24 * 60 * 60 * 1000,
-        });
+        res.cookie('token', token, cookieOptions);
 
         res.status(201).json({ user: user.rows[0] });
     } catch (error) {
@@ -55,12 +51,7 @@ export async function login(req: Request, res: Response, next: NextFunction) {
 
         const token = createAccessToken(userWithoutPassword);
 
-        res.cookie('token', token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
-            maxAge: 7 * 24 * 60 * 60 * 1000,
-        });
+        res.cookie('token', token, cookieOptions);
 
         res.status(200).json({ user: userWithoutPassword });
     } catch (error) {
@@ -70,7 +61,7 @@ export async function login(req: Request, res: Response, next: NextFunction) {
 
 export async function logout(req: Request, res: Response, next: NextFunction) {
     try {
-        res.clearCookie('token');
+        res.clearCookie('token', cookieOptions);
         res.status(200).json({ message: 'Logged out' });
     } catch (error) {
         next(error);
