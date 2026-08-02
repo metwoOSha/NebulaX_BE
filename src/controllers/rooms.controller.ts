@@ -1,5 +1,11 @@
 import type { Request, Response, NextFunction } from 'express';
 import { pool } from '../db/index.js';
+import { publisher } from '../redis/index.js';
+
+async function withOnlineCounts<T extends { id: string }>(rooms: T[]) {
+    const counts = await Promise.all(rooms.map((room) => publisher.sCard(`room:${room.id}:online`)));
+    return rooms.map((room, index) => ({ ...room, online_count: counts[index] }));
+}
 
 export async function getRooms(req: Request, res: Response, next: NextFunction) {
     try {
@@ -31,10 +37,16 @@ export async function getRooms(req: Request, res: Response, next: NextFunction) 
             ),
         ]);
 
+        const [myWithOnline, joinedWithOnline, recommendedWithOnline] = await Promise.all([
+            withOnlineCounts(my.rows),
+            withOnlineCounts(joined.rows),
+            withOnlineCounts(recommended.rows),
+        ]);
+
         res.status(200).json({
-            my: my.rows,
-            joined: joined.rows,
-            recommended: recommended.rows,
+            my: myWithOnline,
+            joined: joinedWithOnline,
+            recommended: recommendedWithOnline,
         });
     } catch (error) {
         next(error);
@@ -55,7 +67,27 @@ export async function getRoomById(req: Request, res: Response, next: NextFunctio
 
         if (room.rows.length === 0) return res.status(404).json({ message: 'Room not found' });
 
-        res.status(200).json({ room: room.rows[0] });
+        const [roomWithOnline] = await withOnlineCounts(room.rows);
+
+        res.status(200).json({ room: roomWithOnline });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function getRoomMembers(req: Request, res: Response, next: NextFunction) {
+    try {
+        const { id } = req.params;
+
+        const members = await pool.query(
+            `SELECT u.id, u.username, u.avatar_color_id, rm.role
+				FROM room_members rm
+				JOIN users u ON u.id = rm.user_id
+				WHERE rm.room_id = $1`,
+            [id]
+        );
+
+        res.status(200).json({ members: members.rows });
     } catch (error) {
         next(error);
     }
