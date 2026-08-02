@@ -59,6 +59,14 @@ export async function login(req: Request, res: Response, next: NextFunction) {
     }
 }
 
+export async function getSocketToken(req: Request, res: Response, next: NextFunction) {
+    try {
+        res.status(200).json({ token: req.cookies.token });
+    } catch (error) {
+        next(error);
+    }
+}
+
 export async function logout(req: Request, res: Response, next: NextFunction) {
     try {
         res.clearCookie('token', cookieOptions);

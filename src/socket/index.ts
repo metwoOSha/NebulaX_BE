@@ -8,7 +8,8 @@ import { registerTypingHandlers } from './handlers/typing.handler.js';
 export function initSocket(io: Server) {
     io.use((socket, next) => {
         const cookie = socket.handshake.headers.cookie;
-        const token = cookie?.split('token=')[1]?.split(';')[0];
+        const cookieToken = cookie?.split('token=')[1]?.split(';')[0];
+        const token = socket.handshake.auth?.token || cookieToken;
 
         if (!token) return next(new Error('Unauthorized'));
 
