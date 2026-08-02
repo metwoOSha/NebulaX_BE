@@ -7,6 +7,28 @@ async function withOnlineCounts<T extends { id: string }>(rooms: T[]) {
     return rooms.map((room, index) => ({ ...room, online_count: counts[index] }));
 }
 
+async function syncRoomTags(roomId: string, tagNames: string[]) {
+    await pool.query('DELETE FROM room_tags WHERE room_id = $1', [roomId]);
+    if (!tagNames || tagNames.length === 0) return;
+
+    const tags = await pool.query('SELECT id FROM tags WHERE name = ANY($1::text[])', [tagNames]);
+    if (tags.rows.length === 0) return;
+
+    const values = tags.rows.map((_, index) => `($1, $${index + 2})`).join(', ');
+    await pool.query(`INSERT INTO room_tags (room_id, tag_id) VALUES ${values}`, [
+        roomId,
+        ...tags.rows.map((row) => row.id),
+    ]);
+}
+
+async function isRoomAdmin(roomId: string, userId: string): Promise<boolean> {
+    const membership = await pool.query('SELECT role FROM room_members WHERE room_id = $1 AND user_id = $2', [
+        roomId,
+        userId,
+    ]);
+    return membership.rows.length > 0 && membership.rows[0].role === 'admin';
+}
+
 export async function getRooms(req: Request, res: Response, next: NextFunction) {
     try {
         const userId = req.user.id;
@@ -69,7 +91,12 @@ export async function getRoomById(req: Request, res: Response, next: NextFunctio
 
         const [roomWithOnline] = await withOnlineCounts(room.rows);
 
-        res.status(200).json({ room: roomWithOnline });
+        const tags = await pool.query(
+            `SELECT t.name FROM room_tags rt JOIN tags t ON t.id = rt.tag_id WHERE rt.room_id = $1`,
+            [id]
+        );
+
+        res.status(200).json({ room: { ...roomWithOnline, tags: tags.rows.map((row) => row.name) } });
     } catch (error) {
         next(error);
     }
@@ -95,7 +122,7 @@ export async function getRoomMembers(req: Request, res: Response, next: NextFunc
 
 export async function createRoom(req: Request, res: Response, next: NextFunction) {
     try {
-        const { name, description, theme_id } = req.body;
+        const { name, description, theme_id, tags } = req.body;
         const userId = req.user.id;
 
         const room = await pool.query(
@@ -109,7 +136,51 @@ export async function createRoom(req: Request, res: Response, next: NextFunction
             'admin',
         ]);
 
+        await syncRoomTags(room.rows[0].id, tags ?? []);
+
         res.status(201).json({ room: room.rows[0] });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function updateRoom(req: Request, res: Response, next: NextFunction) {
+    try {
+        const { id } = req.params;
+        const { name, description, theme_id, tags } = req.body;
+        const userId = req.user.id;
+
+        if (!(await isRoomAdmin(id as string, userId))) {
+            return res.status(403).json({ message: 'Only the room admin can edit this room' });
+        }
+
+        const room = await pool.query(
+            'UPDATE rooms SET name = $1, description = $2, theme_id = $3 WHERE id = $4 RETURNING id, name, description, theme_id, created_at',
+            [name, description, theme_id, id]
+        );
+        if (room.rows.length === 0) return res.status(404).json({ message: 'Room not found' });
+
+        await syncRoomTags(id as string, tags ?? []);
+
+        res.status(200).json({ room: { ...room.rows[0], tags: tags ?? [] } });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function deleteRoom(req: Request, res: Response, next: NextFunction) {
+    try {
+        const { id } = req.params;
+        const userId = req.user.id;
+
+        if (!(await isRoomAdmin(id as string, userId))) {
+            return res.status(403).json({ message: 'Only the room admin can delete this room' });
+        }
+
+        const room = await pool.query('DELETE FROM rooms WHERE id = $1 RETURNING id', [id]);
+        if (room.rows.length === 0) return res.status(404).json({ message: 'Room not found' });
+
+        res.status(200).json({ message: 'Room deleted' });
     } catch (error) {
         next(error);
     }
