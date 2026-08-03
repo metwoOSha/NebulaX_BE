@@ -12,6 +12,10 @@ REST API + Socket.io server for NebulaX, a real-time chat app with public rooms,
 
 [Live demo](https://nebulax-snowy.vercel.app/) · [Frontend repo](https://github.com/metwoOSha/NebulaX_FE)
 
+Don't want to register? Use the test account on the live demo:
+- email: `test.acc@test.com`
+- password: `12345678`
+
 ## Highlights
 
 - **Redis pub/sub decouples HTTP from sockets.** `message.handler.ts` writes the message to Postgres, then publishes it to a `room:<id>` Redis channel instead of emitting directly. `socket/index.ts` subscribes once with `pSubscribe('room:*', ...)` and re-emits to the matching Socket.io room — this is what lets the server scale to multiple instances without sticky sessions.
